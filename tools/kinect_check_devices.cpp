@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libfreenect.h>
+#include <iostream>
 
 
 static const char* video_format[] = {
@@ -143,7 +144,7 @@ static void open_audio_device(freenect_context* ctx, int device_index)
 
 int main(int argc, char** argv)
 {
-    int device_index = (argc > 1) 
+    int device_index = (argc > 1)
         ? atoi(argv[1])
         : 0;
 

@@ -41,7 +41,9 @@ namespace kinect {
      */
     void* processing_loop(void* self);
 
-
+    /**
+     * necessary capturing callback for rgbd data
+     */
 
     class Task : public TaskBase
     {
@@ -62,6 +64,7 @@ namespace kinect {
 
         RTT::extras::ReadOnlyPointer<base::samples::frame::Frame> video_frame;
         RTT::extras::ReadOnlyPointer<base::samples::DistanceImage> depth_frame;
+
 
         pthread_t freenect_thread;
 

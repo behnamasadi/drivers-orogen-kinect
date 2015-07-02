@@ -39,6 +39,8 @@ void exit_processing_loop(int signum) {
     processing_loop_running = false;
 }
 
+boost::shared_ptr<base::samples::Pointcloud>  point_cloud_ptr;
+int counter=0;
 
 
 Task::Task(std::string const& name, RTT::base::TaskCore::TaskState state)
@@ -236,7 +238,7 @@ bool Task::initialize_frames(void)
 
 
     if(_depth_capturing.get()) {
-	printf("Depth cpturing on\n");
+    printf("Depth capturing on\n");
         if(freenect_set_depth_buffer(device, internal_depth_buffer) < 0) {
            LOG_ERROR("Couldn't set reference to the internal depth buffer in freenect");
             return false;
@@ -271,8 +273,7 @@ void kinect::video_capturing_callback(freenect_device* device, void* video, uint
 {
     kinect::Task* task = reinterpret_cast<kinect::Task*>(freenect_get_user(device));
 
-    frame::Frame* frame = new frame::Frame(task->video_mode.width, 
-            task->video_mode.height, 8, task->_video_format.get()); 
+    frame::Frame* frame = new frame::Frame(task->video_mode.width, task->video_mode.height, 8, task->_video_format.get());
 
     frame->setImage(reinterpret_cast<const char*>(video), task->video_mode.bytes);
     frame->setStatus(frame::STATUS_VALID);
@@ -282,30 +283,90 @@ void kinect::video_capturing_callback(freenect_device* device, void* video, uint
     frame->attributes.clear();
 
     task->video_frame.reset(frame);
+    point_cloud_ptr.reset(new base::samples::Pointcloud() ) ;
+    std::vector<base::Vector4d> colors;
+    for(std::size_t i=0;i< task->video_mode.bytes;i=i+3)
+    {
+        base::Vector4d color;
+        //char *pixel = frame->at(i);
 
+
+        color[0]= (reinterpret_cast<const unsigned char*>(video)[i+0]) / 256.0;
+        color[1]= (reinterpret_cast<const unsigned char*>(video)[i+1]) / 256.0;
+        color[2]= (reinterpret_cast<const unsigned char*>(video)[i+2]) / 256.0;
+        color[3]= 1.0;
+
+        colors.push_back(color);
+    }
+    point_cloud_ptr->colors =colors;
+
+
+
+
+
+//    std::vector<base::Vector4d> colors;
+//    for(std::size_t i=0;i< 480;i=i+1)
+//    {
+//        base::Vector4d color;
+//        for(std::size_t j=0;j<640;j++)
+//        {
+//            color[0]=reinterpret_cast<const char*>(video)[i*1920+j+0*640];
+//            color[1]=reinterpret_cast<const char*>(video)[i*1920+j+1*640];
+//            color[2]=reinterpret_cast<const char*>(video)[i*1920+j+2*640];
+//            color[3]=255.0;
+//            if(counter==0)
+//            {
+//                std::cout<<"i*1920 " <<i*1920+j+0*640 <<std::endl;
+
+//            }
+
+//        }
+//        if(color[0] < 0)
+//        {
+//            color[0]=0.0;
+//        }
+//        if(color[1] < 0)
+//        {
+//            color[1]=0.0;
+//        }
+//        if(color[2] < 0)
+//        {
+//            color[2]=0.0;
+//        }
+//        colors.push_back(color);
+//    }
+
+//    point_cloud_ptr->colors =colors;
     task->_video_frame.write(task->video_frame);
+    counter++;
+
+
 }
 
 
 void kinect::depth_capturing_callback(freenect_device* device, void* depth, uint32_t timestamp)
 {
     kinect::Task* task = reinterpret_cast<kinect::Task*>(freenect_get_user(device));
-   
     base::samples::DistanceImage* frame = new base::samples::DistanceImage(task->depth_mode.width,task->depth_mode.height); 
 
     uint16_t *data = (uint16_t*)depth;
     frame->data.resize(task->depth_mode.width*task->depth_mode.height);
-    for(unsigned int i = 0; i< task->depth_mode.width*task->depth_mode.height;i++){
+    for(unsigned int i = 0; i< task->depth_mode.width*task->depth_mode.height;i++)
+    {
         frame->data[i] = data[i]/1000.0; //to meters
     }
     //From: http://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats
     frame->setIntrinsic(525,525,319.5,239.5);
     frame->time = base::Time::now();
-
     task->depth_frame.reset(frame);
-
     task->_depth_image.write(task->depth_frame);
-        
+
+
+//    std::cout <<"frame->getPointCloud().points.size() "  <<frame->getPointCloud().points.size() <<std::endl;
+
+    point_cloud_ptr->points=  frame->getPointCloud().points;
+    task->_rgbd_pointcloud.write(*point_cloud_ptr);
+//    task->_rgbd_pointcloud.write(frame->getPointCloud());
 }
 
 
@@ -460,5 +521,6 @@ void Task::stopHook()
     freenect_close_device(device);
     freenect_shutdown(context);
 }
+
 
 

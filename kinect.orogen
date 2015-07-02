@@ -7,6 +7,10 @@ using_library "libfreenect"
 import_types_from "base"
 
 task_context "Task" do
+#   output_port("rgbd_pointcloud", ro_ptr("/base/samples/Pointcloud")).
+   output_port("rgbd_pointcloud", "/base/samples/Pointcloud").
+        doc("rgbd point cloud from Camera")
+
    output_port("video_frame", ro_ptr("/base/samples/frame/Frame")).
         doc("video image retrieved from Camera")
 
@@ -20,9 +24,9 @@ task_context "Task" do
    input_port("tilt_command", "/base/Angle").
         doc("tilt command for controlling kinect's sensor servo")
 
-
    property("device_id", "int", 0).
         doc("selects a specific kinect device if more than one are connected")
+
 
    property("freenect_flooding_log", "bool", false).
         doc("show freenects flooding debug logs when BASE_LOG_LEVEL = debug")
